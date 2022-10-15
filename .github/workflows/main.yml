@@ -1,44 +1,21 @@
-name: Publish To serve
+name: Continuous Deploy #action名称
+on: [push] #在推送的时候运行此action
 
-on:
-  push:
-    branches: [main]
 jobs:
-  docs:
-    runs-on: ubuntu-22.04 # 指定运行所需要的虚拟机环境（必填）
+  deploy_job: # 工作名称
+    runs-on: ubuntu-latest #运行环境
+    name: build
+    steps: # 步骤
+      # check out the repository
+      - name: Checkout
+        uses: actions/checkout@v3 #这里使用了github官方提供的action,checkout项目到虚拟机上
 
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          # “最近更新时间” 等 git 日志相关信息，需要拉取全部提交记录
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v1
-        with:
-          # 选择要使用的 node 版本
-          node-version: "14"
-
-      # 缓存 node_modules
-      - name: Cache dependencies
-        uses: actions/cache@v2
-        id: yarn-cache
-        with:
-          path: |
-            **/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-yarn-
-
-      # 如果缓存没有命中，安装依赖
-      - name: Install dependencies
-        if: steps.yarn-cache.outputs.cache-hit != 'true'
-        run: yarn --frozen-lockfile
-
-      # 运行构建脚本
-      - name: Build dist
+      - name: Install Dependencies
+        run: yarn #执行的命令
+      - name: Build
         run: yarn build
 
+      # 利用action把build好的文件上传到服务器/workspace/react-note路径下,需要确认此目录已在服务端创建
       - name: deploy file to server
         uses: wlixcc/SFTP-Deploy-Action@v1.0
         with:
@@ -47,4 +24,3 @@ jobs:
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }} #引用之前创建好的secret
           local_path: "./dist/*" # 对应我们项目build的文件夹路径
           remote_path: "./page" # 将项目build文件夹部署到远程文件夹
-
